@@ -1,3 +1,4 @@
-# musedjson
-## API version 1.0.1
-- Bugfixes and increased error handling robustness
+# ourJSON
+## API version 2.0.0
+- [ ] add custom bucket support
+- [ ] investigate GraphQL-style retrieval
