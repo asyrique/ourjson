@@ -1,12 +1,16 @@
 'use strict';
 
-const url = process.env.VIRTUAL_HOST || 'localhost:8080';
-const dbhost = 'mongo';
+const port = process.env.PORT || '8080';
+const hostname = process.env.HOSTNAME || null;
+const url = process.env.VIRTUAL_HOST || 'localhost:' + port;
+const dbhost = process.env.DBHOST || 'mongo';
 const dbname = process.env.MONGO_DB_NAME || 'ourjson';
+const protocol = process.env.HTTP_PROTOCOL || 'https';
 const restify = require('restify');
 const mongojs = require('mongojs');
 const shortid = require('shortid');
 const key = require('mongo-key-escape');
+const spawn = require('child_process').spawn;
 
 // Functions
 function filterkeys(json) {
@@ -89,7 +93,8 @@ server.post('/bins', filterKeys, function postBucket(req, res, next) {
         description: 'Your data was not saved',
       });
     } if (doc) {
-      res.json(201, {uri: 'https://' + url + '/bins/' + binId});
+      res.header('Bin-ID', binId);
+      res.json(201, {uri: protocol + '://' + url + '/bins/' + binId});
     } else {
       res.json(500, {
         status: 500,
@@ -168,4 +173,22 @@ server.put('/bins/:binId', filterKeys, function putBucketId(req, res, next) {
   next();
 });
 
-server.listen(8080);
+// Session export
+server.post('/export', function exportFunction(req, res, next) {
+  const selectedIds = req.body.ids;
+  res.set('Content-Type', 'application/json');
+  const mongoExport = spawn('mongoexport', [
+    '--db', dbname, '--collection', 'bins',
+    '--jsonArray', '--host', dbhost + ':27017',
+    '--fields', 'binId,json',
+    '--query', '{ binId: { $in: ' + JSON.stringify(selectedIds) + '} }',
+  ]).stdout.pipe(res);
+
+  next();
+});
+
+if (hostname) {
+  server.listen(port, hostname);
+} else {
+  server.listen(port);
+}
